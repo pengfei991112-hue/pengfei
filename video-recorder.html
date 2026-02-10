@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即兴演讲练习录制器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #8892b0;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            max-width: 1400px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .video-section {
+            flex: 1;
+            min-width: 500px;
+            max-width: 700px;
+        }
+
+        .transcript-section {
+            flex: 1;
+            min-width: 400px;
+            max-width: 500px;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        .timer-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .timer-overlay.recording {
+            background: rgba(220, 38, 38, 0.8);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .recording-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 16px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .recording-indicator.active {
+            opacity: 1;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-download {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-download:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .btn-camera {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-camera:hover:not(:disabled) {
+            background: #7c3aed;
+            transform: translateY(-2px);
+        }
+
+        .btn-copy {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-copy:hover:not(:disabled) {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+
+        .btn-clear {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-clear:hover:not(:disabled) {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+
+        /* Transcript Panel */
+        .transcript-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .transcript-header h3 {
+            color: #10b981;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speech-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #8892b0;
+        }
+
+        .speech-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6b7280;
+        }
+
+        .speech-status-dot.listening {
+            background: #10b981;
+            animation: pulse 1s infinite;
+        }
+
+        .transcript-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            min-height: 300px;
+            max-height: 400px;
+        }
+
+        .transcript-text {
+            color: #e2e8f0;
+            line-height: 1.8;
+            font-size: 15px;
+            white-space: pre-wrap;
+        }
+
+        .transcript-text .interim {
+            color: #8892b0;
+            font-style: italic;
+        }
+
+        .transcript-text .final {
+            color: #e2e8f0;
+        }
+
+        .transcript-placeholder {
+            color: #4a5568;
+            font-style: italic;
+            text-align: center;
+            padding-top: 40px;
+        }
+
+        .transcript-actions {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .word-count {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #8892b0;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Tips Section */
+        .tips {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 1400px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tips h3 {
+            color: #10b981;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .framework {
+            padding: 20px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .framework h4 {
+            color: #3b82f6;
+            margin-bottom: 10px;
+        }
+
+        .framework p {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .tips-list {
+            list-style: none;
+            color: #a0aec0;
+            line-height: 1.8;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 8px;
+        }
+
+        .tips-list li::before {
+            content: "→ ";
+            color: #10b981;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: #8892b0;
+            text-align: center;
+        }
+
+        /* Browser Support Warning */
+        .browser-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .browser-warning.show {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .video-section, .transcript-section {
+                min-width: 100%;
+                max-width: 700px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>即兴演讲练习录制器</h1>
+    <p class="subtitle">视频录制 + 实时语音转文字 · What / So What / Now What</p>
+
+    <div class="browser-warning" id="browserWarning">
+        ⚠️ 语音识别功能需要使用 Chrome 或 Edge 浏览器，并确保网络连接正常。
+    </div>
+
+    <div class="main-container">
+        <!-- Video Section -->
+        <div class="video-section">
+            <div class="video-container">
+                <video id="preview" autoplay muted playsinline></video>
+                <div class="recording-indicator" id="recordingIndicator">
+                    <div class="recording-dot"></div>
+                    <span>录制中</span>
+                </div>
+                <div class="timer-overlay" id="timer">00:00</div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-camera" id="cameraBtn" onclick="startCamera()">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z"/>
+                    </svg>
+                    开启摄像头
+                </button>
+                <button class="btn-start" id="startBtn" onclick="startRecording()" disabled>
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                    开始录制
+                </button>
+                <button class="btn-stop" id="stopBtn" onclick="stopRecording()" disabled>
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
+                    </svg>
+                    停止录制
+                </button>
+                <button class="btn-download" id="downloadBtn" onclick="downloadRecording()" disabled>
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                    下载视频
+                </button>
+            </div>
+
+            <p class="status" id="status">点击「开启摄像头」开始准备</p>
+        </div>
+
+        <!-- Transcript Section -->
+        <div class="transcript-section">
+            <div class="transcript-panel">
+                <div class="transcript-header">
+                    <h3>
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                        </svg>
+                        实时语音转文字
+                    </h3>
+                    <div class="speech-status">
+                        <div class="speech-status-dot" id="speechStatusDot"></div>
+                        <span id="speechStatusText">等待开始</span>
+                    </div>
+                </div>
+
+                <div class="transcript-content" id="transcriptContent">
+                    <div class="transcript-placeholder" id="transcriptPlaceholder">
+                        开始录制后，你说的话会实时显示在这里...
+                    </div>
+                    <div class="transcript-text" id="transcriptText"></div>
+                </div>
+
+                <div class="word-count">
+                    <span>字数: <strong id="charCount">0</strong></span>
+                    <span>预估时长: <strong id="estimatedDuration">0分0秒</strong></span>
+                </div>
+
+                <div class="transcript-actions">
+                    <button class="btn-copy" id="copyBtn" onclick="copyTranscript()" disabled>
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+                            <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+                        </svg>
+                        复制文字
+                    </button>
+                    <button class="btn-clear" id="clearBtn" onclick="clearTranscript()">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        清空
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tips">
+        <h3>演讲框架提示</h3>
+        <div class="framework">
+            <h4>What / So What / Now What</h4>
+            <p>
+                <strong>What（是什么）</strong>：陈述事实、更新或反馈<br>
+                <strong>So What（为什么重要）</strong>：解释这对听众的意义<br>
+                <strong>Now What（下一步）</strong>：明确接下来的行动
+            </p>
+        </div>
+        <ul class="tips-list">
+            <li>目标时长：3分钟（约450-500字）</li>
+            <li>看向镜头，保持眼神交流</li>
+            <li>犯错不要停，保持角色状态</li>
+            <li>结尾用总结句：「我的核心观点是...」</li>
+            <li>语速适中，每分钟约150字</li>
+            <li>录完后把转录文字发给教练分析</li>
+        </ul>
+    </div>
+
+    <script>
+        // ==================== Variables ====================
+        let mediaRecorder;
+        let recordedChunks = [];
+        let stream;
+        let timerInterval;
+        let seconds = 0;
+        let recordings = [];
+
+        // Speech Recognition
+        let recognition;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        let isRecognizing = false;
+
+        // ==================== Initialize ====================
+        function init() {
+            // Check for Speech Recognition support
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                document.getElementById('browserWarning').classList.add('show');
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-CN';
+
+            recognition.onstart = () => {
+                isRecognizing = true;
+                updateSpeechStatus('listening', '正在识别...');
+            };
+
+            recognition.onend = () => {
+                isRecognizing = false;
+                // Auto restart if still recording
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Recognition restart failed:', e);
+                    }
+                } else {
+                    updateSpeechStatus('idle', '识别已停止');
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    updateSpeechStatus('listening', '未检测到语音...');
+                } else if (event.error === 'network') {
+                    updateSpeechStatus('error', '网络错误');
+                }
+            };
+
+            recognition.onresult = (event) => {
+                interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                updateTranscriptDisplay();
+                updateWordCount();
+            };
+        }
+
+        // ==================== Speech Status ====================
+        function updateSpeechStatus(status, text) {
+            const dot = document.getElementById('speechStatusDot');
+            const statusText = document.getElementById('speechStatusText');
+
+            dot.className = 'speech-status-dot';
+            if (status === 'listening') {
+                dot.classList.add('listening');
+            }
+            statusText.textContent = text;
+        }
+
+        // ==================== Transcript Display ====================
+        function updateTranscriptDisplay() {
+            const textEl = document.getElementById('transcriptText');
+            const placeholder = document.getElementById('transcriptPlaceholder');
+
+            if (finalTranscript || interimTranscript) {
+                placeholder.style.display = 'none';
+                textEl.innerHTML = `<span class="final">${finalTranscript}</span><span class="interim">${interimTranscript}</span>`;
+
+                // Auto scroll to bottom
+                const content = document.getElementById('transcriptContent');
+                content.scrollTop = content.scrollHeight;
+
+                document.getElementById('copyBtn').disabled = false;
+            } else {
+                placeholder.style.display = 'block';
+                textEl.innerHTML = '';
+            }
+        }
+
+        function updateWordCount() {
+            const text = finalTranscript + interimTranscript;
+            const charCount = text.replace(/\s/g, '').length;
+            document.getElementById('charCount').textContent = charCount;
+
+            // Estimate duration (assuming 150 chars per minute for Chinese)
+            const minutes = Math.floor(charCount / 150);
+            const remainingChars = charCount % 150;
+            const secondsEstimate = Math.round(remainingChars / 2.5);
+            document.getElementById('estimatedDuration').textContent = `${minutes}分${secondsEstimate}秒`;
+        }
+
+        function copyTranscript() {
+            const text = finalTranscript;
+            if (!text) return;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✓ 已复制';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            });
+        }
+
+        function clearTranscript() {
+            finalTranscript = '';
+            interimTranscript = '';
+            updateTranscriptDisplay();
+            updateWordCount();
+            document.getElementById('copyBtn').disabled = true;
+            document.getElementById('transcriptPlaceholder').style.display = 'block';
+        }
+
+        // ==================== Camera & Recording ====================
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: true
+                });
+
+                const preview = document.getElementById('preview');
+                preview.srcObject = stream;
+
+                document.getElementById('cameraBtn').disabled = true;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('status').textContent = '摄像头已就绪，点击「开始录制」开始你的3分钟演练';
+
+            } catch (err) {
+                console.error('无法访问摄像头:', err);
+                document.getElementById('status').textContent = '无法访问摄像头，请检查权限设置';
+            }
+        }
+
+        function startRecording() {
+            recordedChunks = [];
+            seconds = 0;
+
+            // Reset timer style
+            document.getElementById('timer').style.background = 'rgba(220, 38, 38, 0.8)';
+
+            const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'video/webm;codecs=vp8,opus';
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'video/webm';
+            }
+
+            mediaRecorder = new MediaRecorder(stream, options);
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const timestamp = new Date().toLocaleString('zh-CN');
+                const duration = formatTime(seconds);
+
+                recordings.push({ url, timestamp, duration, blob });
+
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('status').textContent = `录制完成！时长：${duration}，可以复制转录文字发给教练分析`;
+            };
+
+            mediaRecorder.start(1000);
+
+            // Start speech recognition
+            if (recognition) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.log('Recognition already started');
+                }
+            }
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('recordingIndicator').classList.add('active');
+            document.getElementById('timer').classList.add('recording');
+            document.getElementById('status').textContent = '正在录制... 记住：What → So What → Now What';
+
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            // Stop speech recognition
+            if (recognition && isRecognizing) {
+                recognition.stop();
+            }
+
+            clearInterval(timerInterval);
+
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('recordingIndicator').classList.remove('active');
+            document.getElementById('timer').classList.remove('recording');
+            updateSpeechStatus('idle', '识别已停止');
+        }
+
+        function updateTimer() {
+            seconds++;
+            document.getElementById('timer').textContent = formatTime(seconds);
+
+            // 3分钟提醒
+            if (seconds === 180) {
+                document.getElementById('timer').style.background = 'rgba(245, 158, 11, 0.8)';
+                document.getElementById('status').textContent = '已到3分钟！可以准备收尾了';
+            }
+            // 超时提醒
+            if (seconds === 210) {
+                document.getElementById('timer').style.background = 'rgba(239, 68, 68, 0.9)';
+            }
+        }
+
+        function formatTime(totalSeconds) {
+            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const secs = (totalSeconds % 60).toString().padStart(2, '0');
+            return `${mins}:${secs}`;
+        }
+
+        function downloadRecording() {
+            if (recordings.length === 0) return;
+
+            const latest = recordings[recordings.length - 1];
+            const a = document.createElement('a');
+            a.href = latest.url;
+            const date = new Date().toISOString().slice(0, 10);
+            a.download = `即兴演讲练习_${date}_${latest.duration.replace(':', 'm')}s.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // ==================== Page Events ====================
+        window.onbeforeunload = function() {
+            if (recordings.length > 0 || finalTranscript) {
+                return '你有未保存的录制或转录内容，确定要离开吗？';
+            }
+        };
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>
